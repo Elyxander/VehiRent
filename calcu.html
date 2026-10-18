@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VehiRent - Car Rental System</title>
+  <link rel="stylesheet" href="design.css" />
+</head>
+
+<body class="dash-page">
+  <div class="container">
+
+    <!-- Header -->
+    <header class="dash-header">
+      <h1>
+        <img
+          class="dash-logo"
+          src="https://lh3.googleusercontent.com/d/1c9Q_h4_lieTErF2Y7U5-zgQj7LkEvCON"
+          alt="VehiRent Logo"
+          referrerpolicy="no-referrer"
+        />
+        VehiRent
+      </h1>
+      <p>Choose a car, set the days, and rent it out</p>
+    </header>
+
+    <!-- Back Button -->
+    <a href="dashboard.html" class="back-btn">&larr; Back</a>
+
+    <!-- Car Rental Form -->
+    <div class="panel">
+      <h2>Car Rental Form</h2>
+
+      <form id="rentalForm">
+        <div class="field">
+          <label for="name">Customer Name</label>
+          <input
+            type="text"
+            id="name"
+            placeholder="Enter name"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="carSelect">Choose Car</label>
+          <select id="carSelect" required></select>
+        </div>
+
+        <div class="field">
+          <label for="days">Number of Days</label>
+          <input
+            type="number"
+            id="days"
+            value="1"
+            min="1"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <button type="submit" class="btn-primary">Rent Car</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Active Rentals -->
+    <div class="panel">
+      <h2>Active Rentals</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Car</th>
+              <th>Total Cost</th>
+              <th>Time Left</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="rentalTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Rental Totals -->
+    <div class="rental-total">
+      <span>
+        Active Rentals: <strong id="rentalCount">0</strong>
+      </span>
+      <span>
+        Total: <strong id="rentalTotal">₱0</strong>
+      </span>
+    </div>
+
+    <!-- Available Cars -->
+    <div class="panel">
+      <h2>Available Cars</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-image">Image</th>
+              <th>Car Name</th>
+              <th>Seats</th>
+              <th>Rate / Day</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="carTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Reset Button -->
+    <div class="footer-actions">
+      <button class="btn-reset" onclick="resetAllData()">
+        Reset All Data
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    // ---------- Helpers ----------
+    const driveImg = (id) =>
+      `https://lh3.googleusercontent.com/d/${id}`;
+
+    const peso = (n) =>
+      "₱" + Number(n).toLocaleString("en-PH");
+
+    // Fallback image if a car picture fails to load
+    const placeholder = (label) =>
+      "data:image/svg+xml;utf8," +
+      encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg"
+          width="320" height="200">
+          <rect width="100%" height="100%" fill="#eee"/>
+          <text x="50%" y="50%"
+            dominant-baseline="middle"
+            text-anchor="middle"
+            font-size="20" fill="#333">
+            ${label}
+          </text>
+        </svg>`
+      );
+
+    // ---------- Default Car Data ----------
+    const defaultCars = [
+      {
+        id: 1,
+        name: "Toyota Vios",
+        seats: "5 Seater",
+        rate: 1300,
+        available: true,
+        image: driveImg("1aki4hpq4OykI-p7wvf5MjX5pwbAAJZZY")
+      },
+      {
+        id: 2,
+        name: "Toyota Innova",
+        seats: "7 Seater",
+        rate: 1600,
+        available: true,
+        image: driveImg("17z6srC6UoklW1v8wFJiMa2HsSKBYJEsF")
+      },
+      {
+        id: 3,
+        name: "Mitsubishi Montero",
+        seats: "9 Seater",
+        rate: 2000,
+        available: true,
+        image: driveImg("1-HHSkcRWQQErDDiJpK_yOw2umVRDQ_Oi")
+      },
+      {
+        id: 4,
+        name: "Nissan Urvan",
+        seats: "6 Seater",
+        rate: 1550,
+        available: true,
+        image: driveImg("1QX68iCCMqwIo2FO6mX9m2gZBaAhidir1")
+      },
+      {
+        id: 5,
+        name: "Toyota Hiace Commuter",
+        seats: "15 Seater",
+        rate: 2600,
+        available: true,
+        image: driveImg("17EImKSxlQG8jMRWkhPMY5cIz6-rGBcF7")
+      }
+    ];
+
+    // ---------- Load Saved Data ----------
+    let savedCars = null;
+
+    try {
+      savedCars = JSON.parse(localStorage.getItem("cars"));
+    } catch (e) {
+      savedCars = null;
+    }
+
+    let cars = savedCars
+      ? defaultCars.map((car) => {
+          const saved = savedCars.find(
+            (item) => item.id === car.id
+          );
+
+          return {
+            ...car,
+            available: saved
+              ? saved.available
+              : car.available
+          };
+        })
+      : JSON.parse(JSON.stringify(defaultCars));
+
+    let rentals = [];
+
+    let rentalHistory = [];
+
+    try {
+      rentals = JSON.parse(
+        localStorage.getItem("rentals")
+      ) || [];
+
+      rentalHistory = JSON.parse(
+        localStorage.getItem("rentalHistory")
+      ) || [];
+    } catch (e) {
+      rentals = [];
+      rentalHistory = [];
+    }
+
+    // ---------- Render Tables ----------
+    function render() {
+      const carTable = document.getElementById("carTable");
+      const carSelect = document.getElementById("carSelect");
+      const rentalTable = document.getElementById("rentalTable");
+
+      carTable.innerHTML = "";
+      carSelect.innerHTML =
+        '<option value="">-- Select a car --</option>';
+
+      // Display cars
+      cars.forEach((car) => {
+        const rented = !car.available;
+
+        carTable.innerHTML += `
+          <tr class="${rented ? "rented-row" : ""}">
+            <td class="col-image">
+              <img
+                src="${car.image}"
+                alt="${car.name}"
+                class="car-thumb ${rented ? "rented" : ""}"
+                referrerpolicy="no-referrer"
+                onerror="this.onerror=null;this.src=placeholder('${car.name}')"
+              />
+            </td>
+            <td class="car-name">${car.name}</td>
+            <td>${car.seats}</td>
+            <td class="price">${peso(car.rate)}</td>
+            <td>
+              <span class="badge ${rented ? "rented" : "available"}">
+                ${rented ? "Rented" : "Available"}
+              </span>
+            </td>
+          </tr>
+        `;
+
+        // Add available cars to dropdown
+        if (car.available) {
+          carSelect.innerHTML += `
+            <option value="${car.id}">
+              ${car.name} (${car.seats}) - ${peso(car.rate)}/day
+            </option>
+          `;
+        }
+      });
+
+      // Display active rentals
+      rentalTable.innerHTML =
+        rentals.length === 0
+          ? '<tr><td colspan="5" class="empty">No active rentals</td></tr>'
+          : "";
+
+      rentals.forEach((r, index) => {
+        const timeLeft = r.returnTime - Date.now();
+
+        const timeText =
+          timeLeft <= 0
+            ? "Due"
+            : Math.ceil(
+                timeLeft / (1000 * 60 * 60 * 24)
+              ) + " day(s)";
+
+        rentalTable.innerHTML += `
+          <tr>
+            <td>${r.customer}</td>
+            <td>${r.carName}</td>
+            <td class="price">${peso(r.cost)}</td>
+            <td>${timeText}</td>
+            <td>
+              <button
+                class="btn-return"
+                onclick="returnCar(${index})"
+              >
+                Return
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      // Update rental totals
+      const total = rentals.reduce(
+        (sum, rental) => sum + rental.cost,
+        0
+      );
+
+      document.getElementById("rentalCount").textContent =
+        rentals.length;
+
+      document.getElementById("rentalTotal").textContent =
+        peso(total);
+
+      // Save data
+      localStorage.setItem("cars", JSON.stringify(cars));
+      localStorage.setItem("rentals", JSON.stringify(rentals));
+      localStorage.setItem(
+        "rentalHistory",
+        JSON.stringify(rentalHistory)
+      );
+    }
+
+    // ---------- Rent a Car ----------
+    document.getElementById("rentalForm").onsubmit =
+      function (e) {
+        e.preventDefault();
+
+        const carId = parseInt(
+          document.getElementById("carSelect").value
+        );
+
+        const days = parseInt(
+          document.getElementById("days").value
+        );
+
+        const customerName = document
+          .getElementById("name")
+          .value.trim();
+
+        const car = cars.find(
+          (item) => item.id === carId
+        );
+
+        if (!customerName || !car || !car.available || !Number.isInteger(days) || days < 1) {
+          alert("Please enter valid rental details.");
+          return;
+        }
+
+        car.available = false;
+
+        rentals.push({
+          customer: customerName,
+          carId: car.id,
+          carName: `${car.name} (${car.seats})`,
+          cost: car.rate * days,
+          days: days,
+          rentedAt: Date.now(),
+          returnTime:
+            Date.now() + days * 24 * 60 * 60 * 1000
+        });
+
+        this.reset();
+
+        document.getElementById("days").value = 1;
+
+        render();
+      };
+
+    // ---------- Return a Car ----------
+    function returnCar(index) {
+      const rental = rentals[index];
+
+      if (!rental) return;
+
+      const car = cars.find(
+        (item) => item.id === rental.carId
+      );
+
+      if (car) {
+        car.available = true;
+      }
+
+      rentalHistory.push({
+        ...rental,
+        returnedAt: Date.now()
+      });
+
+      rentals.splice(index, 1);
+
+      render();
+    }
+
+    // ---------- Reset All Data ----------
+    function resetAllData() {
+      if (
+        confirm(
+          "Are you sure you want to reset all data and clear rentals?"
+        )
+      ) {
+        localStorage.removeItem("cars");
+        localStorage.removeItem("rentals");
+        localStorage.removeItem("rentalHistory");
+
+        cars = JSON.parse(JSON.stringify(defaultCars));
+        rentals = [];
+        rentalHistory = [];
+
+        render();
+      }
+    }
+
+    // ---------- Initial Display ----------
+    render();
+  </script>
+</body>
+</html>
