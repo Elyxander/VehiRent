@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Profile - VehiRent</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <a href="index.html" class="brand">
+        <img
+          src="https://lh3.googleusercontent.com/d/1c9Q_h4_lieTErF2Y7U5-zgQj7LkEvCON"
+          alt="VehiRent Logo"
+          class="logo"
+        />
+        <span>VehiRent</span>
+      </a>
+      <nav>
+        <a href="aboutus.html">About Us</a>
+        <a href="account.html" class="active">My Account</a>
+        <a href="dash2.html">Get Started</a>
+      </nav>
+    </header>
+
+    <main class="account">
+      <section class="account-intro">
+        <h1>My Profile</h1>
+        <p>
+          Welcome to your VehiRent profile! Manage your personal information and
+          keep track of your car rental activities in one convenient place.
+        </p>
+      </section>
+
+      <section class="account-card" id="profileSection">
+        <h2>Personal Information</h2>
+        <ul class="account-info">
+          <li>
+            <span class="info-label">Full Name:</span> <span id="pName"></span>
+          </li>
+          <li>
+            <span class="info-label">Email Address:</span>
+            <span id="pEmail"></span>
+          </li>
+          <li>
+            <span class="info-label">Phone Number:</span>
+            <span id="pPhone"></span>
+          </li>
+        </ul>
+
+        <form id="profileForm" class="profile-form" hidden>
+          <label
+            >Full Name <input type="text" id="inName" placeholder="Your name"
+          /></label>
+          <label
+            >Email Address
+            <input type="email" id="inEmail" placeholder="Your email"
+          /></label>
+          <label
+            >Phone Number
+            <input type="tel" id="inPhone" placeholder="Your phone number"
+          /></label>
+          <div class="form-buttons">
+            <button type="submit" class="button">Save</button>
+            <button type="button" class="button button-light" id="cancelEdit">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="account-card">
+        <h2>My Activities</h2>
+
+        <h3>My Bookings (<span id="bookingCount">0</span>)</h3>
+        <div class="table-scroll">
+          <table class="account-table">
+            <thead>
+              <tr>
+                <th>Car</th>
+                <th>Customer</th>
+                <th>Days</th>
+                <th>Total Cost</th>
+                <th>Rented On</th>
+                <th>Return By</th>
+              </tr>
+            </thead>
+            <tbody id="bookingTable"></tbody>
+          </table>
+        </div>
+
+        <h3>Rental History (<span id="historyCount">0</span>)</h3>
+        <div class="table-scroll">
+          <table class="account-table">
+            <thead>
+              <tr>
+                <th>Car</th>
+                <th>Customer</th>
+                <th>Days</th>
+                <th>Total Cost</th>
+                <th>Rented On</th>
+                <th>Returned On</th>
+              </tr>
+            </thead>
+            <tbody id="historyTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="account-card">
+        <h2>Account Settings</h2>
+        <ul class="account-settings">
+          <li><a href="#profileSection" id="editProfile">Edit Profile</a></li>
+          <li><a href="dash2.html">Back to Rental Forms</a></li>
+          <li><a href="dash.html">Back to DashBoard</a></li>
+        </ul>
+      </section>
+
+      <p class="account-note">
+        Your profile helps you manage your account and makes renting a car with
+        VehiRent easier and more convenient.
+      </p>
+
+      <p class="about-tagline">VehiRent – Your Journey, Our Priority.</p>
+    </main>
+
+    <script>
+      const peso = (n) => "₱" + Number(n).toLocaleString();
+
+      const load = (key, fallback) => {
+        try {
+          return JSON.parse(localStorage.getItem(key)) || fallback;
+        } catch (e) {
+          return fallback;
+        }
+      };
+
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+
+      const fmt = (ts) =>
+        ts
+          ? new Date(ts).toLocaleDateString("en-PH", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : "—";
+
+      function renderProfile() {
+        const p = load("profile", {});
+        document.getElementById("pName").textContent = p.name || "[Your Name]";
+        document.getElementById("pEmail").textContent =
+          p.email || "[Your Email]";
+        document.getElementById("pPhone").textContent =
+          p.phone || "[Your Phone Number]";
+      }
+
+      const form = document.getElementById("profileForm");
+
+      document.getElementById("editProfile").onclick = function () {
+        const p = load("profile", {});
+        document.getElementById("inName").value = p.name || "";
+        document.getElementById("inEmail").value = p.email || "";
+        document.getElementById("inPhone").value = p.phone || "";
+        form.hidden = false;
+      };
+
+      document.getElementById("cancelEdit").onclick = function () {
+        form.hidden = true;
+      };
+
+      form.onsubmit = function (e) {
+        e.preventDefault();
+        localStorage.setItem(
+          "profile",
+          JSON.stringify({
+            name: document.getElementById("inName").value.trim(),
+            email: document.getElementById("inEmail").value.trim(),
+            phone: document.getElementById("inPhone").value.trim(),
+          }),
+        );
+        form.hidden = true;
+        renderProfile();
+      };
+
+      function renderActivities() {
+        const bookings = load("rentals", []);
+        const history = load("rentalHistory", []).slice().reverse(); // newest first
+
+        document.getElementById("bookingCount").textContent = bookings.length;
+        document.getElementById("historyCount").textContent = history.length;
+
+        document.getElementById("bookingTable").innerHTML = bookings.length
+          ? bookings
+              .map(
+                (r) => `
+                    <tr>
+                        <td>${esc(r.carName)}</td>
+                        <td>${esc(r.customer)}</td>
+                        <td>${r.days || "—"}</td>
+                        <td class="price">${peso(r.cost)}</td>
+                        <td>${fmt(r.rentedAt)}</td>
+                        <td>${fmt(r.returnTime)}</td>
+                    </tr>`,
+              )
+              .join("")
+          : '<tr><td colspan="6" class="empty">No active bookings yet. Rent a car from Get Started.</td></tr>';
+
+        document.getElementById("historyTable").innerHTML = history.length
+          ? history
+              .map(
+                (r) => `
+                    <tr>
+                        <td>${esc(r.carName)}</td>
+                        <td>${esc(r.customer)}</td>
+                        <td>${r.days || "—"}</td>
+                        <td class="price">${peso(r.cost)}</td>
+                        <td>${fmt(r.rentedAt)}</td>
+                        <td>${fmt(r.returnedAt)}</td>
+                    </tr>`,
+              )
+              .join("")
+          : '<tr><td colspan="6" class="empty">No rental history yet.</td></tr>';
+      }
+
+      renderProfile();
+      renderActivities();
+
+      window.addEventListener("storage", () => {
+        renderProfile();
+        renderActivities();
+      });
+    </script>
+  </body>
+</html>
